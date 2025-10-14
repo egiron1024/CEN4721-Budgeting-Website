@@ -1,0 +1,16 @@
+{
+  "files": {
+    "main.css": "/egiron1024/CEN4721-Budgeting-Website.git/static/css/main.f855e6bc.css",
+    "main.js": "/egiron1024/CEN4721-Budgeting-Website.git/static/js/main.7d8a9f3a.js",
+    "static/js/453.4eebf270.chunk.js": "/egiron1024/CEN4721-Budgeting-Website.git/static/js/453.4eebf270.chunk.js",
+    "static/media/logo.svg": "/egiron1024/CEN4721-Budgeting-Website.git/static/media/logo.6ce24c58023cc2f8fd88fe9d219db6c6.svg",
+    "index.html": "/egiron1024/CEN4721-Budgeting-Website.git/index.html",
+    "main.f855e6bc.css.map": "/egiron1024/CEN4721-Budgeting-Website.git/static/css/main.f855e6bc.css.map",
+    "main.7d8a9f3a.js.map": "/egiron1024/CEN4721-Budgeting-Website.git/static/js/main.7d8a9f3a.js.map",
+    "453.4eebf270.chunk.js.map": "/egiron1024/CEN4721-Budgeting-Website.git/static/js/453.4eebf270.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.f855e6bc.css",
+    "static/js/main.7d8a9f3a.js"
+  ]
+}
