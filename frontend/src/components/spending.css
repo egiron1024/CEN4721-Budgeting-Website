@@ -95,6 +95,25 @@
 	color: #586374;
 }
 
+/* Add-item form and recent list */
+.add-item{ margin-top: 14px; }
+.add-form{ margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.add-form label{ font-size: 0.9rem; color: #333; display: flex; flex-direction: column; }
+.add-form input{ padding: 8px 10px; border-radius: 8px; border: 1px solid #e3e6eb; font-size: 0.95rem; }
+.add-form label.has-error input{ border-color: #ff6b6b; }
+.field-error{ color: #ff4d4f; font-size: 0.85rem; margin-top: 6px; }
+.recent-list{ margin-top: 12px; }
+.recent-list h4{ margin: 6px 0; font-size: 1rem; }
+.recent-list ul{ list-style: none; padding: 0; margin: 0; }
+.recent-list li{ padding: 6px 0; border-bottom: 1px solid #f1f3f6; display:flex; justify-content: space-between; }
+.recent-list .date{ color:#8892a0; font-size:0.85rem; margin-left: 8px; }
+
+.recent-item{ display:flex; justify-content:space-between; align-items:center; }
+.recent-left{ font-size:0.95rem; }
+.recent-right{ display:flex; gap:10px; align-items:center; }
+.delete-btn{ background: transparent; border: 1px solid #ff6b6b; color: #ff4d4f; padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
+.delete-btn:hover{ background: rgba(255,75,75,0.06); }
+
 .spending-right{
 	min-height: 180px;
 }
