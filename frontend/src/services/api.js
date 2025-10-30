@@ -32,6 +32,12 @@ export const updateCategory = async (oldName, name, limit) => {
     return response.data;
 };
 
+export const deleteCategory = async (oldName) => {
+    const username = getCurrentUsername();
+    const response = await axios.delete(`${API_URL}/user/categories/${username}/${oldName}`);
+    return response.data;
+};
+
 // Goals API
 export const addGoal = async (id, description, amount, due_date) => {
     const username = getCurrentUsername();

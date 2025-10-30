@@ -145,6 +145,28 @@ app.patch("/api/user/categories/:username/:oldName", async (req: Request, res: R
     }
 });
 
+// delete category
+app.delete("/api/user/categories/:username/:oldName", async (req: Request, res: Response) => {
+    try {
+        console.log("Deleting category for:", req.params.username, "category oldName:", req.params.oldName);
+        const username = req.params.username;
+        const oldName = req.params.oldName;
+
+        const ret = await User.updateOne(
+            { "username": username },
+            { $pull: { categories: { name: oldName } } }
+        );
+
+        if(ret.modifiedCount === 0)
+            return res.status(404).json({ message: "User not found!" });
+
+        res.json({ message: "Goal deleted successfully!" });
+    } catch(error) {
+        console.error("Error deleting goal:", error);
+        res.status(500).json({ message: "Error deleting goal!" });
+    }
+});
+
 // add new goal
 app.post("/api/user/goals/:username", async (req: Request, res: Response) => {
     try {

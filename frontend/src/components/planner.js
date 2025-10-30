@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./planner.css";
-import { getUser, addCategory, updateCategory, addGoal, updateGoal, updateGoalCompleted, deleteGoal } from '../services/api';
+import { getUser, addCategory, updateCategory, deleteCategory, addGoal, updateGoal, updateGoalCompleted, deleteGoal } from '../services/api';
 
 function Planner(){
     const [categories, setCategories] = useState([]);
@@ -96,10 +96,18 @@ function Planner(){
         }
     };
 
-    const removeCategory = (id) => {
-        // You'll need to add a delete endpoint in your backend
-        setCategories(categories.filter(cat => cat.id !== id));
-        alert('Note: Delete not yet connected to backend');
+     const removeCategory = async (id) => {
+        try{
+            const category = categories.find(cat => cat.id === id);
+            if (!category)return;
+
+            await deleteCategory(category.name);
+            setCategories(categories.filter(cat => cat.id !== category.id));
+        }
+        catch (error){
+            console.error('Error deleting category:', error);
+            alert('Failed to delete category!');
+        }
     };
 
     const closeCategoryModal = () => {
