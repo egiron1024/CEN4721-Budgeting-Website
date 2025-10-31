@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import "./planner.css"
+import React, { useState, useEffect } from "react";
+import "./planner.css";
+import { getUser, addCategory, updateCategory, deleteCategory, addGoal, updateGoal, updateGoalCompleted, deleteGoal } from '../services/api';
 
 function Planner(){
     const [categories, setCategories] = useState([]);
@@ -7,12 +8,48 @@ function Planner(){
     const [newCategory, setNewCategory] = useState({ name: '', limit: '' });
     const [newGoal, setNewGoal] = useState({ text: '', amount: '', deadline: '' });
     const [editingGoal, setEditingGoal] = useState(null);
+    const [loading, setLoading] = useState(true);
     
     // Modal states
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [showGoalModal, setShowGoalModal] = useState(false);
     const [isEditingCategory, setIsEditingCategory] = useState(false);
     const [editingCategory, setEditingCategory] = useState(null);
+
+    // Load data from backend when component mounts
+    useEffect(() => {
+        loadUserData();
+    }, []);
+
+    const loadUserData = async () => {
+        try {
+            setLoading(true);
+            const userData = await getUser();
+            
+            // Transform backend data to match your frontend format
+            const transformedCategories = userData.categories.map(cat => ({
+                id: cat._id || Date.now(),
+                name: cat.name,
+                limit: cat.limit
+            }));
+            
+            const transformedGoals = userData.goals.map(goal => ({
+                id: goal.id,
+                text: goal.description,
+                amount: goal.amount,
+                deadline: goal.due_date ? new Date(goal.due_date).toISOString().split('T')[0] : '',
+                completed: goal.completed
+            }));
+            
+            setCategories(transformedCategories);
+            setGoals(transformedGoals);
+        } catch (error) {
+            console.error('Error loading user data:', error);
+            alert('Failed to load data. Make sure the backend is running!');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Category functions
     const openCategoryModal = () => {
@@ -29,31 +66,48 @@ function Planner(){
         setShowCategoryModal(true);
     };
 
-    const saveCategory = () => {
+    const saveCategory = async () => {
         if (newCategory.name.trim()) {
-            if (isEditingCategory && editingCategory) {
-                // Update existing category
-                setCategories(categories.map(cat => 
-                    cat.id === editingCategory.id 
-                        ? { ...cat, name: newCategory.name, limit: parseFloat(newCategory.limit) || 0 }
-                        : cat
-                ));
-            } else {
-                // Add new category
-                const category = {
-                    id: Date.now(),
-                    name: newCategory.name,
-                    limit: parseFloat(newCategory.limit) || 0
-                };
-                setCategories([...categories, category]);
+            try {
+                if (isEditingCategory && editingCategory) {
+                    // Update existing category
+                    await updateCategory(editingCategory.name, newCategory.name, parseFloat(newCategory.limit) || 0);
+                    setCategories(categories.map(cat => 
+                        cat.id === editingCategory.id 
+                            ? { ...cat, name: newCategory.name, limit: parseFloat(newCategory.limit) || 0 }
+                            : cat
+                    ));
+                } else {
+                    // Add new category
+                    await addCategory(newCategory.name, parseFloat(newCategory.limit) || 0);
+                    const category = {
+                        id: Date.now(),
+                        name: newCategory.name,
+                        limit: parseFloat(newCategory.limit) || 0
+                    };
+                    setCategories([...categories, category]);
+                }
+                setNewCategory({ name: '', limit: '' });
+                setShowCategoryModal(false);
+            } catch (error) {
+                console.error('Error saving category:', error);
+                alert('Failed to save category!');
             }
-            setNewCategory({ name: '', limit: '' });
-            setShowCategoryModal(false);
         }
     };
 
-    const removeCategory = (id) => {
-        setCategories(categories.filter(cat => cat.id !== id));
+     const removeCategory = async (id) => {
+        try{
+            const category = categories.find(cat => cat.id === id);
+            if (!category)return;
+
+            await deleteCategory(category.name);
+            setCategories(categories.filter(cat => cat.id !== category.id));
+        }
+        catch (error){
+            console.error('Error deleting category:', error);
+            alert('Failed to delete category!');
+        }
     };
 
     const closeCategoryModal = () => {
@@ -76,33 +130,53 @@ function Planner(){
         setShowGoalModal(true);
     };
 
-    const saveGoal = () => {
+    const saveGoal = async () => {
         if (newGoal.text.trim()) {
-            if (editingGoal) {
-                // Update existing goal
-                setGoals(goals.map(goal => 
-                    goal.id === editingGoal.id 
-                        ? { ...goal, text: newGoal.text, amount: parseFloat(newGoal.amount) || 0, deadline: newGoal.deadline }
-                        : goal
-                ));
-            } else {
-                // Add new goal
-                const goal = {
-                    id: Date.now(),
-                    text: newGoal.text,
+            try {
+                const goalData = {
+                    id: editingGoal ? editingGoal.id : Date.now(),
+                    description: newGoal.text,
                     amount: parseFloat(newGoal.amount) || 0,
-                    deadline: newGoal.deadline,
-                    completed: false
+                    due_date: newGoal.deadline ? new Date(newGoal.deadline) : null
                 };
-                setGoals([...goals, goal]);
+
+                if (editingGoal) {
+                    // Update existing goal
+                    await updateGoal(editingGoal.id, goalData.description, goalData.amount, goalData.due_date);
+                    setGoals(goals.map(goal => 
+                        goal.id === editingGoal.id 
+                            ? { ...goal, text: newGoal.text, amount: parseFloat(newGoal.amount) || 0, deadline: newGoal.deadline }
+                            : goal
+                    ));
+                } else {
+                    // Add new goal
+                    await addGoal(goalData.id, goalData.description, goalData.amount, goalData.due_date);
+                    const goal = {
+                        id: goalData.id,
+                        text: newGoal.text,
+                        amount: parseFloat(newGoal.amount) || 0,
+                        deadline: newGoal.deadline,
+                        completed: false
+                    };
+                    setGoals([...goals, goal]);
+                }
+                setNewGoal({ text: '', amount: '', deadline: '' });
+                setShowGoalModal(false);
+            } catch (error) {
+                console.error('Error saving goal:', error);
+                alert('Failed to save goal!');
             }
-            setNewGoal({ text: '', amount: '', deadline: '' });
-            setShowGoalModal(false);
         }
     };
 
-    const removeGoal = (id) => {
-        setGoals(goals.filter(goal => goal.id !== id));
+    const removeGoal = async (id) => {
+        try {
+            await deleteGoal(id);
+            setGoals(goals.filter(goal => goal.id !== id));
+        } catch (error) {
+            console.error('Error deleting goal:', error);
+            alert('Failed to delete goal!');
+        }
     };
 
     const closeGoalModal = () => {
@@ -111,11 +185,22 @@ function Planner(){
         setEditingGoal(null);
     };
 
-    const toggleGoalComplete = (id) => {
-        setGoals(goals.map(goal => 
-            goal.id === id ? { ...goal, completed: !goal.completed } : goal
-        ));
+    const toggleGoalComplete = async (id) => {
+        try {
+            const goal = goals.find(g => g.id === id);
+            await updateGoalCompleted(id, !goal.completed);
+            setGoals(goals.map(goal => 
+                goal.id === id ? { ...goal, completed: !goal.completed } : goal
+            ));
+        } catch (error) {
+            console.error('Error toggling goal:', error);
+            alert('Failed to update goal status!');
+        }
     };
+
+    if (loading) {
+        return <div className="planner"><p>Loading...</p></div>;
+    }
 
     return(
         <div className="planner">
