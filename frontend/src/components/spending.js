@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./spending.css"
-import { addSpending as apiAddSpending, getUser } from '../services/api';
+import { addSpending as apiAddSpending, getUser, deleteSpending as apiDeleteSpending } from '../services/api';
 
 // ---------------------------
 // Spending component
@@ -100,7 +100,16 @@ function Spending(){
     }
 
     function deleteSpending(id){
-        setSpendings(prev => prev.filter(s => s.id !== id));
+        // call backend to delete, then reload from server; fallback to optimistic remove on error
+        apiDeleteSpending(id)
+            .then(() => {
+                loadSpendings();
+            })
+            .catch(err => {
+                console.error('Failed to delete spending on server', err);
+                // optimistic local removal
+                setSpendings(prev => prev.filter(s => s.id !== id));
+            });
     }
 
     function calcTotal(){

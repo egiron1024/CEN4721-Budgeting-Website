@@ -80,3 +80,11 @@ export const deleteGoal = async (id) => {
     const response = await axios.delete(`${API_URL}/user/goals/${username}/${id}`);
     return response.data;
 };
+
+// Spending API - delete transaction
+export const deleteSpending = async (id) => {
+    const username = getCurrentUsername();
+    // axios.delete accepts a request body via the `data` option
+    const response = await axios.delete(`${API_URL}/user/spending/${username}`, { data: { id } });
+    return response.data;
+};

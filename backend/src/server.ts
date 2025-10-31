@@ -232,13 +232,17 @@ app.delete("/api/user/spending/:username", async (req: Request, res: Response) =
     try {
         const username = req.params.username;
         const { id, item, amount, transaction_date } = req.body;
+        // Remove the spending item with matching id from the user's spending array
+        // Use $pull to remove the array element. id is stored as a Number in the schema.
+        const parsedId = typeof id === 'string' ? Number(id) : id;
+        const ret = await User.updateOne({ username }, { $pull: { spending: { id: parsedId } } });
 
-        const ret = await User.deleteOne({ "username": username }, { $pull: { "spending.$.id": id } });
-
-        if(ret.deletedCount === 0)
+        // Mongoose updateOne returns an object with modifiedCount
+        if (!ret || ret.modifiedCount === 0) {
             return res.status(404).send({ message: "User or transaction not found!" });
+        }
 
-        res.send({ message: "Transaction deleted successfully!"});
+        res.send({ message: "Transaction deleted successfully!" });
     } catch(error) {
         res.status(500).send({ message: "Error updating spending!" });
     }
