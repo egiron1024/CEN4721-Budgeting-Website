@@ -15,13 +15,11 @@ function Dashboard(){
                 setLoading(true);
                 const userData = await getUser();
                 
-                // Get only the first 5 categories
+                // Get only the first 5
                 const limitedCategories = userData.categories.slice(0, 5);
                 
-                // Get only the first 5 goals
                 const limitedGoals = userData.goals.slice(0, 5);
                 
-                // Get spending data (you can also limit this if needed)
                 const limitedSpending = userData.spending.slice(0, 5);
 
                 setCategories(limitedCategories);
