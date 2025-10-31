@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./spending.css"
+import { addSpending as apiAddSpending, getUser } from '../services/api';
 
 // ---------------------------
 // Spending component
@@ -74,12 +75,28 @@ function Spending(){
         if (!validName || !validAmount || !validDate) return;
 
         const amt = parseFloat(form.amount) || 0;
-        const item = { id: Date.now(), amount: amt, name: form.name.trim() || 'Unnamed', date: form.date || new Date().toISOString().slice(0,10) };
-        setSpendings(prev => [item, ...prev]);
-        // reset form
-        setForm({ amount: '', name: '', date: '' });
-        setErrors({ name: '', amount: '', date: '' });
-        setShowAdd(false);
+        const newId = Date.now();
+        const txDate = form.date ? new Date(form.date).getTime() : Date.now();
+
+        // send to backend then reload spendings from DB to reflect persisted state
+        apiAddSpending(newId, form.name.trim() || 'Unnamed', amt, txDate)
+            .then(() => {
+                // reload from server to reflect database state
+                loadSpendings();
+                // reset form
+                setForm({ amount: '', name: '', date: '' });
+                setErrors({ name: '', amount: '', date: '' });
+                setShowAdd(false);
+            })
+            .catch(err => {
+                console.error('Failed to save spending to server', err);
+                // still add locally so UX isn't blocked
+                const item = { id: newId, amount: amt, name: form.name.trim() || 'Unnamed', date: form.date || new Date().toISOString().slice(0,10), ts: txDate };
+                setSpendings(prev => [item, ...prev]);
+                setForm({ amount: '', name: '', date: '' });
+                setErrors({ name: '', amount: '', date: '' });
+                setShowAdd(false);
+            });
     }
 
     function deleteSpending(id){
@@ -109,7 +126,7 @@ function Spending(){
             start = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), startOfToday.getDate() - 6, 0,0,0,0);
             end = endOfToday;
         } else if (range === 'monthly'){
-            // from the 1st of this month to the end of this month
+            // from the 1st of this month (inclusive) to the end of this month
             start = new Date(today.getFullYear(), today.getMonth(), 1, 0,0,0,0);
             end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23,59,59,999); // last day of month
         } else if (range === 'yearly'){
@@ -121,17 +138,23 @@ function Spending(){
             end = endOfToday;
         }
 
+        // Compare using numeric timestamps to avoid timezone and partial-day issues
+        const startTs = start.getTime();
+        const endTs = end.getTime();
+
         return spendings.reduce((sum, it) => {
             let D;
-            // If date looks like YYYY-MM-DD, parse as local date to avoid timezone offset issues
-            if (typeof it.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(it.date)){
+            if (it && typeof it.ts === 'number'){
+                D = new Date(it.ts);
+            } else if (typeof it.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(it.date)){
                 const [y, m, d] = it.date.split('-').map(Number);
-                D = new Date(y, m - 1, d, 12, 0, 0, 0); // noon to be safe across timezones
+                D = new Date(y, m - 1, d, 12, 0, 0, 0); // noon local
             } else {
                 D = new Date(it.date);
             }
-            if (Number.isNaN(D.getTime())) return sum;
-            if (D >= start && D <= end) return sum + Number(it.amount || 0);
+            const dt = D.getTime();
+            if (Number.isNaN(dt)) return sum;
+            if (dt >= startTs && dt <= endTs) return sum + Number(it.amount || 0);
             return sum;
         }, 0);
     }
@@ -142,6 +165,37 @@ function Spending(){
         // small timeout to allow CSS to pick up initial state
         const t = setTimeout(()=> setMounted(true), 20);
         return ()=> clearTimeout(t);
+    },[]);
+
+    // load spendings from backend
+    const loadSpendings = async () => {
+        try {
+            const user = await getUser();
+            if (user && Array.isArray(user.spending)){
+                // map backend format {id, item, amount, transaction_date} -> UI format {id, name, amount, date}
+                const mapped = user.spending.map(s => ({
+                    id: s.id,
+                    name: s.item,
+                    amount: s.amount,
+                    // keep both a display date and a numeric timestamp for robust comparisons
+                    date: s.transaction_date ? new Date(s.transaction_date).toISOString().slice(0,10) : '',
+                    ts: typeof s.transaction_date === 'number' ? s.transaction_date : (s.transaction_date ? Number(s.transaction_date) : undefined)
+                }));
+                // sort by date desc (newest first)
+                mapped.sort((a,b) => {
+                    const da = new Date(a.date).getTime() || 0;
+                    const db = new Date(b.date).getTime() || 0;
+                    return db - da;
+                });
+                setSpendings(mapped);
+            }
+        } catch(err){
+            console.error('Failed to load spendings from server', err);
+        }
+    }
+
+    useEffect(()=>{
+        loadSpendings();
     },[]);
 
     // --- Render

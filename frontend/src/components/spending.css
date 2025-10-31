@@ -21,10 +21,10 @@
 	flex-direction: column;
 }
 
-/* Top border accent classes (similar to dashboard.css) */
+/* Top border accent classes (similar to dashboard.css)
 .accent-spending { border-top: 4px solid #004d40; border-radius: 20px; }
 .accent-banks { border-top: 4px solid #004d40; border-radius: 20px; }
-
+*/
 .spending-left{
 	min-height: 260px;
 }
@@ -72,6 +72,60 @@
 	flex: 1;
 }
 
+/* Scope spending card body layout so totals, notes and add form stack and center */
+.spending-left .card-body{
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	text-align: center;
+}
+
+/* Ensure the toggle button for spending is not affected by other components' .toggle-btn rules */
+.spending-left .card-header .toggle-btn{
+	background: #007bff;
+	color: #fff;
+	border: none;
+	padding: 8px 12px;
+	border-radius: 12px;
+	cursor: pointer;
+	font-weight: 600;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 64px;
+	height: auto;
+}
+
+/* Stack recent items vertically and center their contents */
+.recent-list ul{
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center; /* center the list items inside the card */
+}
+
+.recent-list li{
+	padding: 8px 0;
+	border-bottom: 1px solid #f1f3f6;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	text-align: center;
+	width: auto;
+	max-width: 420px; /* constrain width so centered content appears visually centered */
+}
+
+.recent-item{ display:flex; flex-direction:column; align-items:center; gap:6px; width:100%; }
+.recent-left{ font-size:0.95rem; }
+.recent-right{ display:flex; flex-direction:column; gap:6px; align-items:center; }
+.delete-btn{ background: transparent; border: 1px solid #ff6b6b; color: #ff4d4f; padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; width: fit-content; }
+
 .big-value{
 	font-size: 2.6rem;
 	font-weight: 700;
@@ -104,15 +158,6 @@
 .field-error{ color: #ff4d4f; font-size: 0.85rem; margin-top: 6px; }
 .recent-list{ margin-top: 12px; }
 .recent-list h4{ margin: 6px 0; font-size: 1rem; }
-.recent-list ul{ list-style: none; padding: 0; margin: 0; }
-.recent-list li{ padding: 6px 0; border-bottom: 1px solid #f1f3f6; display:flex; justify-content: space-between; }
-.recent-list .date{ color:#8892a0; font-size:0.85rem; margin-left: 8px; }
-
-.recent-item{ display:flex; justify-content:space-between; align-items:center; }
-.recent-left{ font-size:0.95rem; }
-.recent-right{ display:flex; gap:10px; align-items:center; }
-.delete-btn{ background: transparent; border: 1px solid #ff6b6b; color: #ff4d4f; padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
-.delete-btn:hover{ background: rgba(255,75,75,0.06); }
 
 .spending-right{
 	min-height: 180px;
@@ -144,7 +189,7 @@
 }
 
 .bank-btn{
-	background: #004d40;
+	background: #007bff;
 	color: white;
 	border: none;
 	padding: 10px 14px;

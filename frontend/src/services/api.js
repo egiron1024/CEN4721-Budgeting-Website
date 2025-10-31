@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+// Match the backend server port (server.ts uses PORT || 5000)
 const API_URL = 'http://localhost:5001/api';
 
 // For now, hardcode username - you'll replace this with auth later
@@ -19,6 +20,18 @@ export const addCategory = async (name, limit) => {
     const response = await axios.post(`${API_URL}/user/categories/${username}`, {
         name,
         limit
+    });
+    return response.data;
+};
+
+// Spending API
+export const addSpending = async (id, item, amount, transaction_date) => {
+    const username = getCurrentUsername();
+    const response = await axios.post(`${API_URL}/user/spending/${username}`, {
+        id,
+        item,
+        amount,
+        transaction_date
     });
     return response.data;
 };
