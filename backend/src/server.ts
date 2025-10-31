@@ -69,6 +69,23 @@ app.post("/api/user/spending/:username", async (req: Request, res: Response) => 
     }
 });
 
+// delete transaction
+app.delete("/api/user/spending/:username", async (req: Request, res: Response) => {
+    try {
+        const username = req.params.username;
+        const { id, item, amount, transaction_date } = req.body;
+
+        const ret = await User.deleteOne({ "username": username }, { $pull: { "spending.$.id": id } });
+
+        if(ret.deletedCount === 0)
+            return res.status(404).send({ message: "User or transaction not found!" });
+
+        res.send({ message: "Transaction deleted successfully!"});
+    } catch(error) {
+        res.status(500).send({ message: "Error updating spending!" });
+    }
+});
+
 // add new category
 app.post("/api/user/categories/:username", async (req: Request, res: Response) => {
     try {
@@ -105,6 +122,23 @@ app.patch("/api/user/categories/:username/:oldName", async (req: Request, res: R
 
         if(ret.modifiedCount === 0)
             return res.status(404).send({ message: "User not found!" });
+
+        res.send({ message: "Category updated successfully!" });
+    } catch(error) {
+        res.status(500).send({ message: "Error updating categories!" });
+    }
+});
+
+// remove category
+app.delete("/api/user/categories/:username/", async (req: Request, res: Response) => {
+    try {
+        const username = req.params.username;
+        const { id } = req.body;
+
+        const ret = await User.deleteOne({ "username": username}, { $pull: { "categories.$.id": id }});
+
+        if(ret.deletedCount === 0)
+            return res.status(404).send({ message: "User or category not found!" });
 
         res.send({ message: "Category updated successfully!" });
     } catch(error) {
@@ -169,6 +203,23 @@ app.patch("/api/user/goals/:username/", async (req: Request, res: Response) => {
         const ret = await User.updateOne({ "username": username, "goals.id": id }, { $set: {
             "goals.$.completed": completed
         }});
+
+        if(ret.modifiedCount === 0)
+            return res.status(404).send({ message: "User not found!" });
+
+        res.send({ message: "Goal updated successfully!" });
+    } catch(error) {
+        res.status(500).send({ message: "Error updating goals!" });
+    }
+});
+
+// remove goal
+app.delete("/api/user/goals/:username", async (req: Request, res: Response) => {
+    try {
+        const username = req.params.username;
+        const { id } = req.body;
+
+        const ret = await User.updateOne({ "username": username }, { $pull: { "goals.$.id": id }});
 
         if(ret.modifiedCount === 0)
             return res.status(404).send({ message: "User not found!" });
