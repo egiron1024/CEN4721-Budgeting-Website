@@ -226,3 +226,21 @@ app.delete("/api/user/goals/:username/:id", async (req: Request, res: Response) 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
+// delete transaction
+app.delete("/api/user/spending/:username", async (req: Request, res: Response) => {
+    try {
+        const username = req.params.username;
+        const { id, item, amount, transaction_date } = req.body;
+
+        const ret = await User.deleteOne({ "username": username }, { $pull: { "spending.$.id": id } });
+
+        if(ret.deletedCount === 0)
+            return res.status(404).send({ message: "User or transaction not found!" });
+
+        res.send({ message: "Transaction deleted successfully!"});
+    } catch(error) {
+        res.status(500).send({ message: "Error updating spending!" });
+    }
+});
+
