@@ -92,3 +92,28 @@ export const deleteSpending = async (id) => {
     const response = await axios.delete(`${API_URL}/user/spending/${username}`, { data: { id } });
     return response.data;
 };
+
+// bank api
+export const addBank = async (id, name) => {
+    const username = getCurrentUsername();
+    const response = await axios.post(`${API_URL}/user/banks/${username}`, {
+        id,
+        name
+    });
+    return response.data;
+};
+
+export const deleteBank = async (id) => {
+    const username = getCurrentUsername();
+    const response = await axios.delete(`${API_URL}/user/banks/${username}/${id}`);
+    return response.data;
+};
+
+// Update spending category
+export const updateSpendingCategory = async (id, category) => {
+    const username = getCurrentUsername();
+    const response = await axios.patch(`${API_URL}/user/spending/${username}/${id}`, {
+        category
+    });
+    return response.data;
+};

@@ -1,15 +1,14 @@
 import { Schema, model } from "mongoose";
 
-// create a schema for users
 const userSchema = new Schema({
     username: String,
     goals: [{
-            id: Number,
-            description: String,
-            amount: Number,
-            due_date: Date,
-            completed: Boolean
-        }],
+        id: Number,
+        description: String,
+        amount: Number,
+        due_date: Date,
+        completed: Boolean
+    }],
     categories: [{
         name: String,
         limit: Number
@@ -18,7 +17,14 @@ const userSchema = new Schema({
         id: Number,
         item: String,
         amount: Number,
-        transaction_date: Number
+        transaction_date: Number,
+        bank_id: Number,
+        category: String  // NEW: category name (defaults to empty/null)
+    }],
+    banks: [{
+        id: Number,
+        name: String,
+        added_date: Number
     }]
 });
 

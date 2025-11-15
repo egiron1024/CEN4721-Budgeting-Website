@@ -269,3 +269,172 @@ app.delete("/api/user/goals/:username/:id", async (req: Request, res: Response) 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
+// add bank info
+app.post("/api/user/banks/:username", async (req: Request, res: Response) => {
+    try {
+        const username = req.params.username;
+        const { id, name } = req.body;
+        const added_date = Date.now();
+
+        // Add the bank
+        await User.updateOne({ "username": username }, { $push: {
+            banks: {
+                "id": id,
+                "name": name,
+                "added_date": added_date
+            }
+        }});
+
+        // Generate dummy spending data for the past 30 days
+        const dummySpending = generateDummySpending(id);
+        
+        // Add all dummy transactions
+        await User.updateOne({ "username": username }, { $push: {
+            spending: { $each: dummySpending }
+        }});
+
+        res.json({ 
+            message: "Bank added successfully!",
+            bank: { id, name, added_date },
+            transactionsAdded: dummySpending.length
+        });
+    } catch(error) {
+        console.error("Error adding bank:", error);
+        res.status(500).json({ message: "Error adding bank!" });
+    }
+});
+
+// Delete bank and all associated transactions
+app.delete("/api/user/banks/:username/:id", async (req: Request, res: Response) => {
+    try {
+        const username = req.params.username;
+        const bankId = parseInt(req.params.id);
+
+        // Remove the bank
+        const bankResult = await User.updateOne(
+            { "username": username },
+            { $pull: { banks: { id: bankId } } }
+        );
+
+        if(bankResult.modifiedCount === 0)
+            return res.status(404).json({ message: "User or bank not found!" });
+
+        // Remove all spending transactions associated with this bank
+        const spendingResult = await User.updateOne(
+            { "username": username },
+            { $pull: { spending: { bank_id: bankId } } }
+        );
+
+        res.json({ 
+            message: "Bank and associated transactions removed successfully!",
+            transactionsRemoved: spendingResult.modifiedCount
+        });
+    } catch(error) {
+        console.error("Error removing bank:", error);
+        res.status(500).json({ message: "Error removing bank!" });
+    }
+});
+
+// Helper function to generate dummy spending data with specific item names
+function generateDummySpending(bankId: number) {
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+    
+    const categories = [
+        { 
+            category: "Groceries", 
+            items: ["Whole Foods", "Trader Joe's", "Walmart", "Target", "Kroger", "Safeway"],
+            minAmount: 20, 
+            maxAmount: 150 
+        },
+        { 
+            category: "Coffee", 
+            items: ["Starbucks", "Dunkin'", "Local Café", "Peet's Coffee", "Dutch Bros"],
+            minAmount: 3, 
+            maxAmount: 8 
+        },
+        { 
+            category: "Gas", 
+            items: ["Shell", "Chevron", "BP", "Exxon", "Mobil", "Arco"],
+            minAmount: 30, 
+            maxAmount: 60 
+        },
+        { 
+            category: "Restaurant", 
+            items: ["Chipotle", "McDonald's", "Subway", "Panera", "Olive Garden", "Chick-fil-A", "Taco Bell"],
+            minAmount: 15, 
+            maxAmount: 80 
+        },
+        { 
+            category: "Shopping", 
+            items: ["Amazon", "Mall", "Best Buy", "Target", "Macy's", "Nike Store", "H&M"],
+            minAmount: 25, 
+            maxAmount: 200 
+        },
+        { 
+            category: "Entertainment", 
+            items: ["Netflix", "Spotify", "Movie Theater", "Concert", "Game Store", "Bowling"],
+            minAmount: 10, 
+            maxAmount: 50 
+        },
+        { 
+            category: "Utilities", 
+            items: ["Electric Bill", "Water Bill", "Internet", "Phone Bill", "Gas Bill"],
+            minAmount: 50, 
+            maxAmount: 150 
+        },
+        { 
+            category: "Transportation", 
+            items: ["Uber", "Lyft", "Bus Fare", "Parking", "Toll", "Car Wash"],
+            minAmount: 5, 
+            maxAmount: 30 
+        },
+    ];
+
+    const transactions = [];
+    
+    // Generate 2-4 transactions per day for the past 30 days
+    for (let day = 0; day < 30; day++) {
+        const numTransactions = Math.floor(Math.random() * 3) + 2; // 2-4 transactions
+        
+        for (let i = 0; i < numTransactions; i++) {
+            const category = categories[Math.floor(Math.random() * categories.length)];
+            const itemName = category.items[Math.floor(Math.random() * category.items.length)];
+            const amount = Math.round((Math.random() * (category.maxAmount - category.minAmount) + category.minAmount) * 100) / 100;
+            const transactionDate = now - (day * oneDay) - (Math.random() * oneDay);
+            
+            transactions.push({
+                id: Date.now() + Math.floor(Math.random() * 1000000),
+                item: itemName,
+                amount: amount,
+                transaction_date: Math.floor(transactionDate),
+                bank_id: bankId  // Track which bank this transaction came from
+            });
+        }
+    }
+    
+    return transactions;
+}
+
+// Update spending category
+app.patch("/api/user/spending/:username/:id", async (req: Request, res: Response) => {
+    try {
+        const username = req.params.username;
+        const id = parseInt(req.params.id);
+        const { category } = req.body;
+
+        const ret = await User.updateOne(
+            { "username": username, "spending.id": id },
+            { $set: { "spending.$.category": category } }
+        );
+
+        if(ret.modifiedCount === 0)
+            return res.status(404).json({ message: "User or spending not found!" });
+
+        res.json({ message: "Spending category updated successfully!" });
+    } catch(error) {
+        console.error("Error updating spending category:", error);
+        res.status(500).json({ message: "Error updating spending category!" });
+    }
+});

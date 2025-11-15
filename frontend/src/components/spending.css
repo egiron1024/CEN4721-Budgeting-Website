@@ -1,206 +1,198 @@
-/* Spending component styles */
-
-.spending-container{
-	display: grid;
-	grid-template-columns: 1fr 360px;
-	gap: 24px;
-	padding: 24px;
-	align-items: start;
+/* Spending Items List Styles */
+.recent-list {
+    margin-top: 20px;
+    width: 100%;
 }
 
-/* --------------------------- */
-/* Animations                  */
-/* --------------------------- */
-
-.card{
-	background: #ffffff;
-	border-radius: 20px;
-	box-shadow: 0 6px 18px rgba(20,20,30,0.06);
-	padding: 18px;
-	display: flex;
-	flex-direction: column;
+.recent-list h4 {
+    margin-bottom: 16px;
+    font-size: 1.2rem;
+    font-weight: 600;
 }
 
-/* Top border accent classes (similar to dashboard.css)
-.accent-spending { border-top: 4px solid #004d40; border-radius: 20px; }
-.accent-banks { border-top: 4px solid #004d40; border-radius: 20px; }
-*/
-.spending-left{
-	min-height: 260px;
+.recent-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
-.card-header{
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 12px;
+.recent-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 16px 20px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+	position: relative;
+	z-index: 1;
 }
 
-.card-header h2, .card-header h3{
-	margin: 0;
-	font-size: 1.6rem;
+.recent-item:has(.category-dropdown) {
+    z-index: 100;
 }
 
-.toggle-btn{
-	background: #004d40; /* 004d40 */
-	color: #fff;
-	border: none;
-	padding: 8px 12px;
-	border-radius: 12px;
-	cursor: pointer;
-	font-weight: 600;
+.recent-item:hover {
+    border-color: #ccc;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Center the Spending header and place the toggle button under it */
-.spending-left .card-header{
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 8px;
+.recent-left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    flex: 1;
+    gap: 4px;
 }
 
-.spending-left .card-header h2{
-	text-align: center;
-	width: 100%;
+.recent-left .item-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
 }
 
-.spending-left .toggle-btn{
-	margin-top: 4px;
+.recent-left .item-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #333;
 }
 
-.card-body{
-	flex: 1;
+.recent-left .item-amount {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #d32f2f;
 }
 
-/* Scope spending card body layout so totals, notes and add form stack and center */
-.spending-left .card-body{
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 12px;
-	text-align: center;
+.recent-left .date {
+    font-size: 0.85rem;
+    color: #666;
+    font-weight: 400;
 }
 
-/* Ensure the toggle button for spending is not affected by other components' .toggle-btn rules */
-.spending-left .card-header .toggle-btn{
-	background: #007bff;
-	color: #fff;
-	border: none;
-	padding: 8px 12px;
-	border-radius: 12px;
-	cursor: pointer;
-	font-weight: 600;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 64px;
-	height: auto;
+.recent-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-/* Stack recent items vertically and center their contents */
-.recent-list ul{
-	list-style: none;
-	padding: 0;
-	margin: 0;
-	width: 100%;
-	display: flex;
-	flex-direction: column;
-	align-items: center; /* center the list items inside the card */
+/* Category Dropdown Styles */
+.category-dropdown-container {
+    position: relative;
+    display: inline-block;
+    z-index: 1;
 }
 
-.recent-list li{
-	padding: 8px 0;
-	border-bottom: 1px solid #f1f3f6;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 6px;
-	text-align: center;
-	width: auto;
-	max-width: 420px; /* constrain width so centered content appears visually centered */
+.category-btn {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 110px;
+    text-align: center;
+    font-weight: 500;
+    position: relative;
+    z-index: 1;
 }
 
-.recent-item{ display:flex; flex-direction:column; align-items:center; gap:6px; width:100%; }
-.recent-left{ font-size:0.95rem; }
-.recent-right{ display:flex; flex-direction:column; gap:6px; align-items:center; }
-.delete-btn{ background: transparent; border: 1px solid #ff6b6b; color: #ff4d4f; padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; width: fit-content; }
-
-.big-value{
-	font-size: 2.6rem;
-	font-weight: 700;
-	color: #0b2c4f;
+.category-btn:hover {
+    background: #e0e0e0;
+    border-color: #bbb;
 }
 
-/* animation when range toggles */
-.pop{
-	/* slower, gentler pop for numbers */
-	animation: popIn 900ms cubic-bezier(.2,.9,.2,1);
+.category-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 6px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 2000;
+    min-width: 180px;
+    max-height: 250px;
+    overflow-y: auto;
 }
 
-@keyframes popIn{
-	0%{ transform: scale(0.96); opacity: 0; }
-	60%{ transform: scale(1.06); opacity: 1; }
-	100%{ transform: scale(1); opacity: 1; }
+.dropdown-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    font-size: 0.95rem;
 }
 
-.small-note{
-	margin-top: 8px;
-	color: #586374;
+.dropdown-item:first-child {
+    border-radius: 8px 8px 0 0;
 }
 
-/* Add-item form and recent list */
-.add-item{ margin-top: 14px; }
-.add-form{ margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-.add-form label{ font-size: 0.9rem; color: #333; display: flex; flex-direction: column; }
-.add-form input{ padding: 8px 10px; border-radius: 8px; border: 1px solid #e3e6eb; font-size: 0.95rem; }
-.add-form label.has-error input{ border-color: #ff6b6b; }
-.field-error{ color: #ff4d4f; font-size: 0.85rem; margin-top: 6px; }
-.recent-list{ margin-top: 12px; }
-.recent-list h4{ margin: 6px 0; font-size: 1rem; }
-
-.spending-right{
-	min-height: 180px;
+.dropdown-item:last-child {
+    border-radius: 0 0 8px 8px;
 }
 
-.placeholder{
-	color: #7a8796;
-	padding: 18px;
-	border: 2px dashed #e6e9ee;
-	border-radius: 12px;
-	text-align: center;
+.dropdown-item:hover {
+    background: #f5f5f5;
 }
 
-.bank-list{
-	list-style: none;
-	padding: 0;
-	margin: 0;
+.dropdown-item.selected {
+    background: #e3f2fd;
+    font-weight: 600;
+    color: #1976d2;
 }
 
-.bank-list li{
-	padding: 8px 10px;
-	border-bottom: 1px solid #f1f3f6;
+.dropdown-item.no-categories {
+    color: #999;
+    font-style: italic;
+    cursor: default;
+    padding: 16px;
+    text-align: center;
 }
 
-.card-footer{
-	margin-top: 12px;
-	display: flex;
-	justify-content: center;
+.dropdown-item.no-categories:hover {
+    background: white;
 }
 
-.bank-btn{
-	background: #007bff;
-	color: white;
-	border: none;
-	padding: 10px 14px;
-	border-radius: 12px;
-	cursor: pointer;
-	font-weight: 600;
+/* Delete Button */
+.delete-btn {
+    background: #fff;
+    border: 1px solid #e57373;
+    color: #d32f2f;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
 }
 
-/* Responsive adjustments */
-@media (max-width: 900px){
-	.spending-container{
-		grid-template-columns: 1fr;
-	}
+.delete-btn:hover {
+    background: #ffebee;
+    border-color: #d32f2f;
+}
+
+/* Show All/Less Button */
+.recent-list > button.bank-btn {
+    width: 100%;
+    margin-top: 12px;
+}
+
+/* Ensure spending-left takes full width */
+.spending-left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.spending-left .card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
 }

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -9,58 +9,155 @@ import {
   Legend,
   Bar,
 } from "recharts";
+import { getUser } from '../services/api';
 
 export default function Report() {
-  const [period, setPeriod] = useState("month");  // Week/Month/Year
+  const [period, setPeriod] = useState("month");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [spending, setSpending] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Sample Data
-  // Weekly spend:
-  const dataWeek = [
-    { label: "Mon", spending: 42 },
-    { label: "Tue", spending: 63 },
-    { label: "Wed", spending: 28 },
-    { label: "Thu", spending: 75 },
-    { label: "Fri", spending: 56 },
-    { label: "Sat", spending: 90 },
-    { label: "Sun", spending: 38 },
-  ];
+  // Load data from backend
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  // Monthly spend:
-  const dataMonth = [
-    { label: "Wk 1", spending: 420 },
-    { label: "Wk 2", spending: 510 },
-    { label: "Wk 3", spending: 390 },
-    { label: "Wk 4", spending: 560 },
-  ];
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const user = await getUser();
+      
+      if (user && Array.isArray(user.spending)) {
+        const mapped = user.spending.map(s => ({
+          id: s.id,
+          name: s.item,
+          amount: s.amount,
+          date: s.transaction_date,
+          category: s.category || null,
+        }));
+        setSpending(mapped);
+      }
 
-  // Yearly spend:
-  const dataYear = [
-    { label: "Jan", spending: 1200 },
-    { label: "Feb", spending: 980 },
-    { label: "Mar", spending: 1360 },
-    { label: "Apr", spending: 1100 },
-    { label: "May", spending: 1450 },
-    { label: "Jun", spending: 1320 },
-    { label: "Jul", spending: 1500 },
-    { label: "Aug", spending: 1410 },
-    { label: "Sep", spending: 1270 },
-    { label: "Oct", spending: 1600 },
-    { label: "Nov", spending: 1390 },
-    { label: "Dec", spending: 1700 },
-  ];
-
-  // Select database based on period
-  const chartData = useMemo(() => {
-    switch (period) {
-      case "week":
-        return dataWeek;
-      case "year":
-        return dataYear;
-      case "month":
-      default:
-        return dataMonth;
+      if (user && Array.isArray(user.categories)) {
+        setCategories(user.categories.map(cat => cat.name));
+      }
+    } catch (err) {
+      console.error('Failed to load spending data', err);
+    } finally {
+      setLoading(false);
     }
-  }, [period]);
+  };
+
+  // Filter spending by category
+  const filteredSpending = useMemo(() => {
+    if (selectedCategory === "all") return spending;
+    return spending.filter(s => s.category === selectedCategory);
+  }, [spending, selectedCategory]);
+
+  // Generate chart data based on period
+  const chartData = useMemo(() => {
+    const now = new Date();
+    
+    if (period === "week") {
+      // Last 7 days (Mon-Sun of current week)
+      const startOfWeek = new Date(now);
+      const day = startOfWeek.getDay();
+      const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+      startOfWeek.setDate(diff);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const weekData = [];
+      const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      
+      for (let i = 0; i < 7; i++) {
+        const currentDay = new Date(startOfWeek);
+        currentDay.setDate(startOfWeek.getDate() + i);
+        const nextDay = new Date(currentDay);
+        nextDay.setDate(currentDay.getDate() + 1);
+        
+        const daySpending = filteredSpending.filter(s => {
+          const spendDate = new Date(s.date);
+          return spendDate >= currentDay && spendDate < nextDay;
+        });
+
+        const total = daySpending.reduce((sum, s) => sum + Number(s.amount || 0), 0);
+        
+        weekData.push({
+          label: dayNames[i],
+          spending: Math.round(total * 100) / 100,
+        });
+      }
+      
+      return weekData;
+    }
+
+    if (period === "month") {
+      // Current month by week
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      
+      const monthData = [];
+      let weekNum = 1;
+      let currentWeekStart = new Date(startOfMonth);
+      
+      while (currentWeekStart <= endOfMonth) {
+        const currentWeekEnd = new Date(currentWeekStart);
+        currentWeekEnd.setDate(currentWeekStart.getDate() + 7);
+        
+        const weekSpending = filteredSpending.filter(s => {
+          const spendDate = new Date(s.date);
+          return spendDate >= currentWeekStart && spendDate < currentWeekEnd;
+        });
+
+        const total = weekSpending.reduce((sum, s) => sum + Number(s.amount || 0), 0);
+        
+        monthData.push({
+          label: `Wk ${weekNum}`,
+          spending: Math.round(total * 100) / 100,
+        });
+        
+        currentWeekStart = currentWeekEnd;
+        weekNum++;
+      }
+      
+      return monthData;
+    }
+
+    if (period === "year") {
+      // Current year by month
+      const yearData = [];
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      
+      for (let i = 0; i < 12; i++) {
+        const monthStart = new Date(now.getFullYear(), i, 1);
+        const monthEnd = new Date(now.getFullYear(), i + 1, 0, 23, 59, 59, 999);
+        
+        const monthSpending = filteredSpending.filter(s => {
+          const spendDate = new Date(s.date);
+          return spendDate >= monthStart && spendDate <= monthEnd;
+        });
+
+        const total = monthSpending.reduce((sum, s) => sum + Number(s.amount || 0), 0);
+        
+        yearData.push({
+          label: monthNames[i],
+          spending: Math.round(total * 100) / 100,
+        });
+      }
+      
+      return yearData;
+    }
+
+    return [];
+  }, [period, filteredSpending]);
+
+  const totals = useMemo(() => {
+    const sum = chartData.reduce((s, d) => s + (Number(d.spending) || 0), 0);
+    const avg = chartData.length ? sum / chartData.length : 0;
+    const max = chartData.reduce((m, d) => Math.max(m, Number(d.spending) || 0), 0);
+    return { sum, avg, max };
+  }, [chartData]);
 
   const styles = {
     page: { padding: "2rem" },
@@ -73,7 +170,7 @@ export default function Report() {
       boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
       minHeight: 300,
     },
-    filterRow: { display: "flex", gap: "0.75rem", marginBottom: "1rem" },
+    filterRow: { display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" },
     filterBtn: (active) => ({
       border: "1px solid #ccc",
       background: active ? "#A4D3FC" : "white",
@@ -82,6 +179,17 @@ export default function Report() {
       cursor: "pointer",
       fontSize: "16px",
     }),
+    categorySection: {
+      marginTop: "1rem",
+      paddingTop: "1rem",
+      borderTop: "1px solid #e5e7eb",
+    },
+    categoryLabel: {
+      fontSize: "14px",
+      fontWeight: 600,
+      marginBottom: "0.5rem",
+      color: "#374151",
+    },
     totalsRow: {
       display: "grid",
       gridTemplateColumns: "repeat(3, 1fr)",
@@ -98,12 +206,14 @@ export default function Report() {
     totalValue: { fontSize: 18, fontWeight: 600 },
   };
 
-  const totals = useMemo(() => {
-    const sum = chartData.reduce((s, d) => s + (Number(d.spending) || 0), 0);
-    const avg = chartData.length ? sum / chartData.length : 0;
-    const max = chartData.reduce((m, d) => Math.max(m, Number(d.spending) || 0), 0);
-    return { sum, avg, max };
-  }, [chartData]);
+  if (loading) {
+    return (
+      <div style={styles.page}>
+        <h1 style={styles.h1}>Spending Report</h1>
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.page}>
@@ -122,10 +232,39 @@ export default function Report() {
         ))}
       </div>
 
+      {/* Category Filter */}
+      <div style={styles.categorySection}>
+        <div style={styles.categoryLabel}>Filter by Category:</div>
+        <div style={styles.filterRow}>
+          <button
+            onClick={() => setSelectedCategory("all")}
+            style={styles.filterBtn(selectedCategory === "all")}
+          >
+            All Categories
+          </button>
+          {categories.length === 0 ? (
+            <span style={{ fontSize: "14px", color: "#6b7280", padding: "0.5rem" }}>
+              No categories created yet
+            </span>
+          ) : (
+            categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                style={styles.filterBtn(selectedCategory === cat)}
+              >
+                {cat}
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
       {/* Chart Card */}
       <section style={styles.card}>
         <h2 style={{ margin: 0, marginBottom: "0.75rem", fontSize: "1.25rem", fontWeight: 600 }}>
           Spending by {period === "week" ? "Day" : period === "month" ? "Week" : "Month"}
+          {selectedCategory !== "all" && ` - ${selectedCategory}`}
         </h2>
 
         <div style={{ width: "100%", height: 360 }}>
@@ -145,7 +284,7 @@ export default function Report() {
         <div style={styles.totalsRow}>
           <div style={styles.totalBox}>
             <div style={styles.totalLabel}>Total</div>
-            <div style={styles.totalValue}>${totals.sum.toLocaleString()}</div>
+            <div style={styles.totalValue}>${totals.sum.toFixed(2)}</div>
           </div>
           <div style={styles.totalBox}>
             <div style={styles.totalLabel}>Average</div>
@@ -153,7 +292,7 @@ export default function Report() {
           </div>
           <div style={styles.totalBox}>
             <div style={styles.totalLabel}>Max</div>
-            <div style={styles.totalValue}>${totals.max.toLocaleString()}</div>
+            <div style={styles.totalValue}>${totals.max.toFixed(2)}</div>
           </div>
         </div>
       </section>

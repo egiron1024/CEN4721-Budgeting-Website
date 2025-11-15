@@ -1,7 +1,6 @@
-
 import React, { useEffect, useState } from "react";
 import "./spending.css"
-import { addSpending as apiAddSpending, getUser, deleteSpending as apiDeleteSpending } from '../services/api';
+import { addSpending as apiAddSpending, getUser, deleteSpending as apiDeleteSpending, addBank as apiAddBank, deleteBank as apiDeleteBank, updateSpendingCategory as apiUpdateSpendingCategory } from '../services/api';
 
 // ---------------------------
 // Spending component
@@ -11,27 +10,68 @@ function Spending(){
     const ranges = ["Monthly", "Yearly", "Weekly"];
     const [rangeIndex, setRangeIndex] = useState(0);
     const [animate, setAnimate] = useState(false);
-    const [banks, setBanks] = useState([]); // placeholder for linked banks
-    const [mounted, setMounted] = useState(false); // for mount animation
-    const [spendings, setSpendings] = useState([]); // local placeholder spendings
+    const [banks, setBanks] = useState([]);
+    const [mounted, setMounted] = useState(false);
+    const [spendings, setSpendings] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [showAdd, setShowAdd] = useState(false);
     const [form, setForm] = useState({ amount: '', name: '', date: '' });
     const [errors, setErrors] = useState({ name: '', amount: '', date: '' });
+    const [isAddingBank, setIsAddingBank] = useState(false);
+    const [showAllSpending, setShowAllSpending] = useState(false);
+    const [openDropdownId, setOpenDropdownId] = useState(null);
 
     // --- Handlers
     function nextRange(){
         setRangeIndex((rangeIndex + 1) % ranges.length);
-        // small pop animation for numbers
         setAnimate(true);
         setTimeout(() => setAnimate(false), 350);
     }
 
-    function toggleBank(){
-        // temporary behaviour: add a dummy bank if empty, otherwise remove last
-        if(banks.length === 0){
-            setBanks(["Demo Bank"]);
-        } else {
-            setBanks([]);
+    async function addBank(){
+        if (isAddingBank) return;
+        
+        setIsAddingBank(true);
+        try {
+            const bankId = Date.now();
+            const bankName = "Chase Bank";
+            
+            const result = await apiAddBank(bankId, bankName);
+            
+            await loadUserData();
+            
+            console.log(`Added ${result.transactionsAdded} transactions from ${bankName}`);
+        } catch(err) {
+            console.error('Failed to add bank', err);
+        } finally {
+            setIsAddingBank(false);
+        }
+    }
+
+    async function removeBank(bankId){
+        try {
+            await apiDeleteBank(bankId);
+            await loadUserData();
+        } catch(err) {
+            console.error('Failed to remove bank', err);
+        }
+    }
+
+    // --- Category handlers
+    function toggleDropdown(spendingId){
+        setOpenDropdownId(openDropdownId === spendingId ? null : spendingId);
+    }
+
+    async function assignCategory(spendingId, categoryName){
+        try {
+            await apiUpdateSpendingCategory(spendingId, categoryName);
+            // Update local state
+            setSpendings(prev => prev.map(s => 
+                s.id === spendingId ? { ...s, category: categoryName } : s
+            ));
+            setOpenDropdownId(null);
+        } catch(err) {
+            console.error('Failed to update category', err);
         }
     }
 
@@ -43,7 +83,6 @@ function Spending(){
     function handleFormChange(e){
         const { name, value } = e.target;
         setForm(prev => ({ ...prev, [name]: value }));
-        // validate on change
         validateField(name, value);
     }
 
@@ -69,7 +108,6 @@ function Spending(){
 
     function addSpending(e){
         e.preventDefault();
-        // validate all fields before submitting
         const validName = validateField('name', form.name);
         const validAmount = validateField('amount', form.amount);
         const validDate = validateField('date', form.date);
@@ -79,19 +117,15 @@ function Spending(){
         const newId = Date.now();
         const txDate = form.date ? new Date(form.date).getTime() : Date.now();
 
-        // send to backend then reload spendings from DB to reflect persisted state
         apiAddSpending(newId, form.name.trim() || 'Unnamed', amt, txDate)
             .then(() => {
-                // reload from server to reflect database state
                 loadSpendings();
-                // reset form
                 setForm({ amount: '', name: '', date: '' });
                 setErrors({ name: '', amount: '', date: '' });
                 setShowAdd(false);
             })
             .catch(err => {
                 console.error('Failed to save spending to server', err);
-                // still add locally so UX isn't blocked
                 const item = { id: newId, amount: amt, name: form.name.trim() || 'Unnamed', date: form.date || new Date().toISOString().slice(0,10), ts: txDate };
                 setSpendings(prev => [item, ...prev]);
                 setForm({ amount: '', name: '', date: '' });
@@ -101,30 +135,20 @@ function Spending(){
     }
 
     function deleteSpending(id){
-        // call backend to delete, then reload from server; fallback to optimistic remove on error
         apiDeleteSpending(id)
             .then(() => {
                 loadSpendings();
             })
             .catch(err => {
                 console.error('Failed to delete spending on server', err);
-                // optimistic local removal
                 setSpendings(prev => prev.filter(s => s.id !== id));
             });
     }
 
     function calcTotal(){
-        // compute total based on currently selected range
         const range = ranges[rangeIndex] ? ranges[rangeIndex].toLowerCase() : 'monthly';
         const today = new Date();
 
-        function toDateOnly(d){
-            const D = new Date(d);
-            if (Number.isNaN(D.getTime())) return null;
-            return new Date(D.getFullYear(), D.getMonth(), D.getDate());
-        }
-
-        // build inclusive start/end datetimes for the chosen range
         const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
         const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
@@ -132,23 +156,19 @@ function Spending(){
         let end;
 
         if (range === 'weekly'){
-            // last 7 calendar days (including today)
             start = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), startOfToday.getDate() - 6, 0,0,0,0);
             end = endOfToday;
         } else if (range === 'monthly'){
-            // from the 1st of this month (inclusive) to the end of this month
             start = new Date(today.getFullYear(), today.getMonth(), 1, 0,0,0,0);
-            end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23,59,59,999); // last day of month
+            end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23,59,59,999);
         } else if (range === 'yearly'){
             start = new Date(today.getFullYear(), 0, 1, 0,0,0,0);
             end = new Date(today.getFullYear(), 11, 31, 23,59,59,999);
         } else {
-            // include everything
             start = new Date(0);
             end = endOfToday;
         }
 
-        // Compare using numeric timestamps to avoid timezone and partial-day issues
         const startTs = start.getTime();
         const endTs = end.getTime();
 
@@ -158,7 +178,7 @@ function Spending(){
                 D = new Date(it.ts);
             } else if (typeof it.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(it.date)){
                 const [y, m, d] = it.date.split('-').map(Number);
-                D = new Date(y, m - 1, d, 12, 0, 0, 0); // noon local
+                D = new Date(y, m - 1, d, 12, 0, 0, 0);
             } else {
                 D = new Date(it.date);
             }
@@ -170,28 +190,35 @@ function Spending(){
     }
 
     // --- Effects
-    // trigger mount animation once when the component appears
     useEffect(()=>{
-        // small timeout to allow CSS to pick up initial state
         const t = setTimeout(()=> setMounted(true), 20);
         return ()=> clearTimeout(t);
     },[]);
 
-    // load spendings from backend
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (openDropdownId && !event.target.closest('.category-dropdown-container')) {
+                setOpenDropdownId(null);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [openDropdownId]);
+
     const loadSpendings = async () => {
         try {
             const user = await getUser();
             if (user && Array.isArray(user.spending)){
-                // map backend format {id, item, amount, transaction_date} -> UI format {id, name, amount, date}
                 const mapped = user.spending.map(s => ({
                     id: s.id,
                     name: s.item,
                     amount: s.amount,
-                    // keep both a display date and a numeric timestamp for robust comparisons
                     date: s.transaction_date ? new Date(s.transaction_date).toISOString().slice(0,10) : '',
-                    ts: typeof s.transaction_date === 'number' ? s.transaction_date : (s.transaction_date ? Number(s.transaction_date) : undefined)
+                    ts: typeof s.transaction_date === 'number' ? s.transaction_date : (s.transaction_date ? Number(s.transaction_date) : undefined),
+                    bankId: s.bank_id,
+                    category: s.category || null
                 }));
-                // sort by date desc (newest first)
                 mapped.sort((a,b) => {
                     const da = new Date(a.date).getTime() || 0;
                     const db = new Date(b.date).getTime() || 0;
@@ -204,9 +231,49 @@ function Spending(){
         }
     }
 
+    const loadUserData = async () => {
+        try {
+            const user = await getUser();
+            
+            if (user && Array.isArray(user.banks)){
+                setBanks(user.banks);
+            }
+
+            if (user && Array.isArray(user.categories)){
+                setCategories(user.categories.map(cat => ({
+                    name: cat.name,
+                    limit: cat.limit
+                })));
+            }
+            
+            if (user && Array.isArray(user.spending)){
+                const mapped = user.spending.map(s => ({
+                    id: s.id,
+                    name: s.item,
+                    amount: s.amount,
+                    date: s.transaction_date ? new Date(s.transaction_date).toISOString().slice(0,10) : '',
+                    ts: typeof s.transaction_date === 'number' ? s.transaction_date : (s.transaction_date ? Number(s.transaction_date) : undefined),
+                    bankId: s.bank_id,
+                    category: s.category || null
+                }));
+                mapped.sort((a,b) => {
+                    const da = new Date(a.date).getTime() || 0;
+                    const db = new Date(b.date).getTime() || 0;
+                    return db - da;
+                });
+                setSpendings(mapped);
+            }
+        } catch(err){
+            console.error('Failed to load user data from server', err);
+        }
+    }
+
     useEffect(()=>{
-        loadSpendings();
+        loadUserData();
     },[]);
+
+    // Determine how many spendings to show
+    const displayedSpendings = showAllSpending ? spendings : spendings.slice(0, 5);
 
     // --- Render
     return(
@@ -251,16 +318,69 @@ function Spending(){
                         <div className="recent-list">
                             <h4>Recent</h4>
                             <ul>
-                                {spendings.slice(0,5).map(s => (
+                                {displayedSpendings.map(s => (
                                     <li key={s.id} className="recent-item">
-                                        <div className="recent-left">{s.name} — ${Number(s.amount).toFixed(2)}</div>
-                                        <div className="recent-right">
+                                        <div className="recent-left">
+                                            <div className="item-header">
+                                                <span className="item-name">{s.name}</span>
+                                                <span className="item-amount">${Number(s.amount).toFixed(2)}</span>
+                                            </div>
                                             <span className="date">{s.date}</span>
+                                        </div>
+                                        <div className="recent-right">
+                                            {/* Category Dropdown */}
+                                            <div className="category-dropdown-container">
+                                                <button 
+                                                    className="category-btn" 
+                                                    onClick={() => toggleDropdown(s.id)}
+                                                    aria-label="Assign category"
+                                                >
+                                                    {s.category || 'Category'}
+                                                </button>
+                                                
+                                                {openDropdownId === s.id && (
+                                                    <div className="category-dropdown">
+                                                        {categories.length === 0 ? (
+                                                            <div className="dropdown-item no-categories">
+                                                                Create a category first in Planner
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div 
+                                                                    className="dropdown-item"
+                                                                    onClick={() => assignCategory(s.id, null)}
+                                                                >
+                                                                    None
+                                                                </div>
+                                                                {categories.map(cat => (
+                                                                    <div 
+                                                                        key={cat.name}
+                                                                        className={`dropdown-item ${s.category === cat.name ? 'selected' : ''}`}
+                                                                        onClick={() => assignCategory(s.id, cat.name)}
+                                                                    >
+                                                                        {cat.name}
+                                                                    </div>
+                                                                ))}
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+
                                             <button className="delete-btn" onClick={() => deleteSpending(s.id)} aria-label={`Delete ${s.name}`}>Delete</button>
                                         </div>
                                     </li>
                                 ))}
                             </ul>
+                            {spendings.length > 5 && (
+                                <button 
+                                    className="bank-btn" 
+                                    onClick={() => setShowAllSpending(!showAllSpending)}
+                                    style={{marginTop: '10px'}}
+                                >
+                                    {showAllSpending ? 'Show Less' : `Show All (${spendings.length} items)`}
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
@@ -275,12 +395,19 @@ function Spending(){
                         <div className="placeholder">No banks linked yet. Add a bank to get started.</div>
                     ) : (
                         <ul className="bank-list">
-                            {banks.map((b, i) => <li key={i}>{b}</li>)}
+                            {banks.map((b) => (
+                                <li key={b.id} className="bank-item">
+                                    <span>{b.name}</span>
+                                    <button className="delete-btn" onClick={() => removeBank(b.id)} aria-label={`Remove ${b.name}`}>Remove</button>
+                                </li>
+                            ))}
                         </ul>
                     )}
                 </div>
                 <div className="card-footer">
-                    <button className="bank-btn" onClick={toggleBank}>{banks.length === 0 ? 'Add Bank' : 'Remove Bank'}</button>
+                    <button className="bank-btn" onClick={addBank} disabled={isAddingBank}>
+                        {isAddingBank ? 'Adding...' : 'Add Bank'}
+                    </button>
                 </div>
             </div>
         </div>
